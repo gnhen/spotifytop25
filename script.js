@@ -5,6 +5,9 @@ outputElement.id = 'output'; // Give the element an ID for styling
 document.body.appendChild(outputElement); // Append the output element to the body
 
 spotifyButton.addEventListener('click', () => {
+
+    console.log("clicked")
+
     // Execute the Python script using a process manager like `subprocess`
     const { spawn } = require('child_process');
     const pythonProcess = spawn('python', ['spotify.py']);
