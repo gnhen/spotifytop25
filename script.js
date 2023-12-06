@@ -1,30 +1,28 @@
-const spotifyButton = document.getElementById('spotifyButton');
-const outputElement = document.createElement('div'); // Create an element to display the output
-outputElement.id = 'output'; // Give the element an ID for styling
+const outputElement = document.createElement('div');
+outputElement.id = 'output';
+document.body.appendChild(outputElement);
 
-document.body.appendChild(outputElement); // Append the output element to the body
+async function top25clicked() {
+    console.log("clicked");
 
-spotifyButton.addEventListener('click', () => {
+    try {
+        const response = await fetch('/run_script');
+        const result = await response.json();
 
-    console.log("clicked")
+        if (result.error) {
+            console.error('Error:', result.error);
+        } else {
+            outputElement.textContent = result.output;
+        }
+    } catch (error) {
+        if (response.status === 404) {
+            console.error('Error: Endpoint not found');
+        } else if (response.ok) {
+            const result = await response.json();
+            outputElement.textContent = result.output;
+        } else {
+            console.error('Error:', response.statusText);
+        }
 
-    // Execute the Python script using a process manager like `subprocess`
-    const { spawn } = require('child_process');
-    const pythonProcess = spawn('python', ['spotify.py']);
-
-    // Capture and display the process output
-    let outputText = '';
-    pythonProcess.stdout.on('data', (data) => {
-        outputText += data.toString();
-        outputElement.textContent = outputText; // Update the output element with the captured text
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-        outputText += data.toString();
-        outputElement.textContent = outputText; // Update the output element with the captured text
-    });
-
-    pythonProcess.on('exit', (code) => {
-        console.log(`Python script exited with code: ${code}`);
-    });
-});
+    }
+}
