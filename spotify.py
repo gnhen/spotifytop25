@@ -2,12 +2,10 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import datetime
 
-sp = spotipy.Spotify()
-
 SPOTIFY_CLIENT_ID = "cae135cb691048e6baa3b09e67958658"
 SPOTIFY_CLIENT_SECRET = "76b54e8ba6aa4409bbfcf6cfbe2a29b5"
 SPOTIFY_REDIRECT_URI = "http://localhost:8080"
-USERNAME = input("Type in your spotify name: ")
+USERNAME = "granthendricks1"
 
 
 def get_top_tracks(sp, time_range="short_term"):
@@ -34,20 +32,22 @@ def main():
         )
     )
 
-    first_of_month = datetime.datetime.today()
-    last_month = first_of_month - datetime.timedelta(days=60)
-
-    start = int(last_month.timestamp())
-    end = int(first_of_month.timestamp())
+    end = int(datetime.datetime.today().timestamp())  # End time is today
+    start = int(
+        (datetime.datetime.today() - datetime.timedelta(weeks=4)).timestamp()
+    )  # Four weeks ago
 
     time_range = f"{start*1000}-{end*1000}"  # Multiply by 1000 to convert seconds to milliseconds
 
     top_tracks = get_top_tracks(sp, time_range)
 
-    title = f"{first_of_month:%B} Top Songs {int(first_of_month.timestamp())}"  # Unique identifier added
+    # Use the previous month's name for the playlist
+    title = (
+        datetime.datetime.today().replace(day=1) - datetime.timedelta(days=1)
+    ).strftime("%B") + " Top Songs"
     create_playlist(sp, title, top_tracks)
 
-    print(f"Created '{title}' playlist")
+    print(f"Created '{title}' playlist with time range from {start} to {end}")
 
 
 if __name__ == "__main__":
