@@ -1,21 +1,44 @@
-.container {
-    width: 300px;
-    margin: 0 auto;
+body {
+  margin: 1rem;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-.text-box {
-    background-color: black;
-    color: white;
-    padding: 15px;
-    text-align: center;
+tr:nth-child(even) {
+  background-color: #eee;
 }
 
-.button {
-    margin-top: 15px;
-    background-color: #00FF00;
-    color: white;
-    border-radius: 5px;
-    padding: 10px;
-    text-align: center;
-    cursor: pointer;
+td:first-child {
+  font-weight: bold;
+}
+
+td {
+  white-space: nowrap;
+  padding: 10px;
+  margin-right: 1rem;
+}
+
+button {
+  margin: 1rem 1rem 0 0;
+  border: 0;
+  border-radius: 20px;
+  padding: 10px 3rem;
+  font-size: 0.8rem;
+  font-family: Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+  font-weight: bold;
+  background-color: #bbb;
+  color: black;
+}
+
+button.mainButton {
+  font-size: 1.7rem;
+  background-color: #1ed760;
+}
+
+button:hover {
+  background-color: #00ce4b;
+}
+
+#logged-in {
+  display: none;
 }
