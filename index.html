@@ -4,9 +4,7 @@
 <head>
     <title>Spotify Top 25</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Add the DOMPurify script tag before your script.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </head>
 
 <body>
@@ -14,8 +12,7 @@
         <div class="text-box">
             <h1>Spotify Top 25</h1>
         </div>
-        <button class="button" id="spotifyButton" onclick="top25clicked()">Create Top 25 Playlist</button>
-
+        <button class="button" id="spotifyButton">Create Top 25 Playlist</button>
         <div id="output" style="margin-top: 15px; padding: 10px; border: 1px solid #ccc; background-color: #fff;"></div>
     </div>
 </body>

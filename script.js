@@ -1,78 +1,130 @@
+document.getElementById('spotifyButton').addEventListener('click', top25clicked);
+
+let accessToken = null;  // Store the access token globally
+let refreshAttempt = 0; // Counter for refresh attempts
+
+const clientId = 'cae135cb691048e6baa3b09e67958658';  // Placeholder for your client ID
+const redirectUri = 'http://localhost:8080';  // Placeholder for your redirect URI
+const scopes = 'user-top-read playlist-modify-public';
+
 async function authenticateWithSpotify() {
     try {
-        // Replace 'YOUR_CLIENT_ID' with your actual client ID
-        const clientId = 'cae135cb691048e6baa3b09e67958658';
-        const redirectUri = 'http://localhost:8080'; // Adjust this to your actual redirect URI
+        // Open a new window for user authentication
+        const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(scopes)}&response_type=code`;
+        const authWindow = window.open(authUrl, 'Spotify Authentication', 'width=600,height=600');
 
-        // Redirect the user to the Spotify authorization page
-        window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=user-top-read%20playlist-modify-public&state=123`;
+        // Wait for the user to complete authentication and Spotify to redirect back
+        const authCode = await waitForSpotifyRedirect(authWindow);
+
+        // Exchange the authorization code for an access token
+        const tokenResponse = await exchangeAuthCodeForToken(authCode);
+        if (!tokenResponse || !tokenResponse.access_token) {
+            throw new Error('Failed to obtain access token');
+        }
+
+        const accessToken = { ...tokenResponse, timestamp: Date.now() };  // Store the access token with timestamp
+        return accessToken;
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during authentication:', error);
+        return null;
     }
 }
 
-async function getTokenFromCode(code) {
-    try {
-        // Replace 'YOUR_CLIENT_ID' and 'YOUR_CLIENT_SECRET' with your actual values
-        const clientId = 'cae135cb691048e6baa3b09e67958658';
-        const clientSecret = '76b54e8ba6aa4409bbfcf6cfbe2a29b5';
-        const redirectUri = 'http://localhost:8080'; // Adjust this to your actual redirect URI
+async function waitForSpotifyRedirect(authWindow) {
+    return new Promise((resolve) => {
+        const interval = setInterval(() => {
+            try {
+                if (authWindow.location.href.startsWith(redirectUri)) {
+                    clearInterval(interval);
+                    authWindow.close();
 
-        // Exchange the authorization code for an access token
-        const response = await fetch('https://accounts.spotify.com/api/token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
-            },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                code: code,
-                redirect_uri: redirectUri,
-            }),
-        });
+                    const url = new URL(authWindow.location.href);
+                    const authCode = url.searchParams.get('code');
+                    resolve(authCode);
+                }
+            } catch (error) {
+                // Ignore Cross-Origin Security errors
+            }
+        }, 1000);
+    });
+}
 
-        const data = await response.json();
-        return data.access_token;
-    } catch (error) {
-        console.error('Error:', error);
+async function exchangeAuthCodeForToken(authCode) {
+    const clientSecret = '76b54e8ba6aa4409bbfcf6cfbe2a29b5';  // Placeholder for your client secret
+
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `grant_type=authorization_code&code=${authCode}&redirect_uri=${redirectUri}&client_id=${clientId}&client_secret=${clientSecret}`,
+    });
+
+    if (!response.ok) {
+        console.error(`HTTP error! Status: ${response.status}`);
+        return null;
     }
+
+    const data = await response.json();
+    return data;
+}
+
+function isTokenExpired(token) {
+    if (!token || !token.timestamp || !token.expires_in) {
+        // Token information is incomplete, consider it expired
+        return true;
+    }
+
+    // Calculate the expiration time based on the timestamp and expires_in values
+    const expirationTime = token.timestamp + (token.expires_in * 1000);  // Convert seconds to milliseconds
+
+    // Check if the token is expired
+    return Date.now() > expirationTime;
 }
 
 async function top25clicked() {
     try {
-        // Get the authorization code from the URL (assuming it's a redirect from Spotify)
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        console.log('Button clicked');
 
-        if (code) {
-            // Exchange the authorization code for an access token
-            const accessToken = await getTokenFromCode(code);
-
-            // Use the access token to make requests to the Spotify Web API
-            const response = await fetch('https://api.spotify.com/v1/me/top/tracks?time_range=short_term&limit=25', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + accessToken,
-                },
-            });
-
-            const data = await response.json();
-
-            // Extract track IDs from the API response
-            const trackIds = data.items.map(track => track.id);
-
-            // ... (continue with playlist creation logic using the access token)
-
-            document.getElementById('output').textContent = 'Playlist created successfully!';
-        } else {
-            // If no code is present, redirect the user to Spotify for authentication
-            authenticateWithSpotify();
+        const token = await authenticateWithSpotify();
+        if (!token) {
+            console.error('Access token not available');
+            return;
         }
+
+        console.log('Access Token:', token);
+
+        console.log('Making API request');
+
+        const apiResponse = await fetch('https://api.spotify.com/v1/me', {
+            method: 'GET',
+            headers: new Headers({
+                'Authorization': `Bearer ${token.access_token}`,
+            }),
+        });
+
+        if (!apiResponse.ok) {
+            const errorResponse = await apiResponse.json();
+            console.error('Error response from Spotify API:', errorResponse);
+
+            if (apiResponse.status === 401 && refreshAttempt < 3) {
+                // Token expired, refresh and try again (up to 3 attempts)
+                refreshAttempt++;
+                accessToken = null;
+                console.log('Token expired, refreshing...');
+                return top25clicked();
+            }
+
+            throw new Error(`HTTP error! Status: ${apiResponse.status}`);
+        }
+
+        // Reset the refresh attempt counter on successful API response
+        refreshAttempt = 0;
+
+        const data = await apiResponse.json();
+        console.log('API Response:', data);
+
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during top25clicked:', error);
     }
 }
-
-// Call top25clicked on page load
-top25clicked();
